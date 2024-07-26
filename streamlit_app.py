@@ -1,5 +1,10 @@
 import streamlit as st
 from datetime import datetime
+import pandas as pd
+
+# Initialize session state to store orders
+if 'orders' not in st.session_state:
+    st.session_state.orders = []
 
 def home():
     st.title("Aldecoa Coffee Internal Ordering System")
@@ -45,29 +50,61 @@ def place_order():
 
     pickup_date = st.sidebar.date_input("Pickup Date", datetime.now())
     current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    confirmation_code = f"CONF-{len(st.session_state.orders) + 1:03d}"
 
     if st.sidebar.button("Submit Order"):
-        st.write(f"Order received on {current_datetime}!")
-        st.write(f"Name: {name}")
-        st.write(f"Department: {department}")
-        st.write(f"Coffee Types: {', '.join(coffee_type)}")
-        st.write(f"Pickup Date: {pickup_date}")
+        order = {
+            "Name": name,
+            "Department": department,
+            "Coffee Types": ', '.join(coffee_type),
+            "Pickup Date": pickup_date,
+            "Order Time": current_datetime,
+            "Confirmation Code": confirmation_code,
+            "Picked Up": False
+        }
+        st.session_state.orders.append(order)
+        st.success(f"Order received! Confirmation code: {confirmation_code}")
 
 def view_orders():
     st.title("View Orders")
-    st.write("Here you can view all orders.")
+    if st.session_state.orders:
+        df = pd.DataFrame(st.session_state.orders)
+        st.dataframe(df)
+    else:
+        st.write("No orders placed yet.")
 
 def picked_up_orders():
     st.title("Picked Up Orders")
-    st.write("Here you can view orders that have been picked up.")
+    if st.session_state.orders:
+        df = pd.DataFrame([order for order in st.session_state.orders if order["Picked Up"]])
+        st.dataframe(df)
+    else:
+        st.write("No orders picked up yet.")
 
 def track_order():
     st.title("Track Order")
-    st.write("Here you can track your order.")
+    confirmation_code = st.text_input("Enter Confirmation Code")
+    if st.button("Track Order"):
+        for order in st.session_state.orders:
+            if order["Confirmation Code"] == confirmation_code:
+                st.write(f"Order found: {order}")
+                return
+        st.error("Order not found!")
+
+def mark_picked_up():
+    st.title("Mark Order as Picked Up")
+    confirmation_code = st.text_input("Enter Confirmation Code to Mark as Picked Up")
+    if st.button("Mark as Picked Up"):
+        for order in st.session_state.orders:
+            if order["Confirmation Code"] == confirmation_code:
+                order["Picked Up"] = True
+                st.success(f"Order {confirmation_code} marked as picked up!")
+                return
+        st.error("Order not found!")
 
 def main():
     st.sidebar.title("Navigation")
-    page = st.sidebar.selectbox("Select a page:", ["Home", "Place Order", "View Orders", "Picked Up Orders", "Track Order"])
+    page = st.sidebar.selectbox("Select a page:", ["Home", "Place Order", "View Orders", "Picked Up Orders", "Track Order", "Mark as Picked Up"])
 
     if page == "Home":
         home()
@@ -79,6 +116,8 @@ def main():
         picked_up_orders()
     elif page == "Track Order":
         track_order()
+    elif page == "Mark as Picked Up":
+        mark_picked_up()
 
 if __name__ == "__main__":
     main()
